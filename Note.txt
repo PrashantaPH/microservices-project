@@ -1,0 +1,48 @@
+sudo docker build -t microservices-project .
+
+docker tag microservices-project your-dockerhub-username/microservices-project
+docker login
+docker push your-dockerhub-username/microservices-project
+
+project$ sudo docker run -it --entrypoint /bin/sh microservices-project
+# java -jar discovery-server.jar
+
+
+docker-compose.yaml
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "8761:8761"
+    restart: always
+
+
+Dockerfile
+# Use an official OpenJDK runtime as a parent image
+FROM eclipse-temurin:17-jdk-alpine
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the built JAR file into the container
+COPY target/discovery-server.jar discovery-server.jar
+
+# Expose the port that the application will run on
+EXPOSE 8761
+
+# Command to run the application
+ENTRYPOINT ["java", "-jar", "discovery-server.jar"]
+
+# # Use Maven to build the app
+# FROM maven:3.9.9-amazoncorretto-17-al2023 AS build
+# WORKDIR /app
+# COPY pom.xml
+# RUN mvn clean package -DskipTests
+#
+# # Use OpenJDK to run the app
+# FROM openjdk:17-slim-bullseye
+# WORKDIR /app
+# COPY --from=build /app/target/discovery-server.jar discovery-server.jar
+# EXPOSE 8080
+# ENTRYPOINT ["java", "-jar", "discovery-server.jar"]
