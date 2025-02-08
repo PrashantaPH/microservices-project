@@ -8,6 +8,9 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:17-jdk
 WORKDIR /app
 
+# Install Netcat (for health checks)
+RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
+
 # Copy built JAR files
 COPY --from=build /app/jwt-authentication-svc/target/*.jar jwt-authentication-svc.jar
 COPY --from=build /app/api-gateway/target/*.jar api-gateway.jar
@@ -15,23 +18,18 @@ COPY --from=build /app/clientmanagement-svc/target/*.jar clientmanagement-svc.ja
 COPY --from=build /app/discovery-server/target/*.jar discovery-server.jar
 COPY --from=build /app/config-server/target/*.jar config-server.jar
 
+# Copy the entry script
+COPY entry.sh /app/entry.sh
+
+# Give execute permissions
+RUN chmod +x /app/entry.sh
+
 # Expose necessary ports
 EXPOSE 8761 8089 8888 8081 8084
 
-# Start Discovery Server first, then Config Server, then other microservices
-CMD java -jar discovery-server.jar & \
-    echo "Waiting for Discovery Server to start..." && \
-    sleep 15 && \
+# Use ENTRYPOINT instead of CMD
+ENTRYPOINT ["/bin/bash", "/app/entry.sh"]
 
-    java -jar config-server.jar & \
-    echo "Waiting for Config Server to start..." && \
-    sleep 15 && \
-
-    java -jar api-gateway.jar & \
-    java -jar jwt-authentication-svc.jar & \
-    java -jar clientmanagement-svc.jar & \
-
-    wait
 # # Start required microservices (modify as per your needs)
 # CMD java -jar discovery-server.jar & \
 #     java -jar config-server.jar & \
